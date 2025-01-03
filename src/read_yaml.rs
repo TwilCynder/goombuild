@@ -1,11 +1,16 @@
-use std::{fmt::Display, fs, io};
+use std::{error::Error, fmt::Display, fs, io};
 
 use yaml_rust2::{ScanError, Yaml, YamlLoader};
 
-enum ReadError {
+#[derive(Debug)]
+pub enum ReadError {
     IO(io::Error),
     YamlScan(ScanError),
     Content(&'static str)
+}
+
+impl Error for ReadError {
+    
 }
 
 impl Display for ReadError {
@@ -54,12 +59,12 @@ pub fn read_yaml_file(filename: &str) -> Result<Vec<Yaml>, ReadError> {
     Ok(docs)
 }
 
-pub fn get_hash(docs: &Vec<Yaml>) -> Result<&Yaml, ReadError> {
+pub fn get_hash(docs: &Vec<Yaml>) -> Result<&Yaml, &str> {
     if docs.len() > 1{
-        return Err(ReadError::from("Config file somehow contains multiple YAML documents"));
+        return Err("Config file somehow contains multiple YAML documents");
     }
     if docs.len() < 1{
-        return Err(ReadError::from("Empty config"));
+        return Err("Empty config");
     }
 
     Ok(&docs[0])

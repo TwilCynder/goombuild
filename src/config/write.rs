@@ -8,6 +8,15 @@ impl Config <'_>{
 
         file.write(b"EXEC=")?;
         file.write(self.exec_name.as_bytes())?;
+        file.write(b"\n")?;
+
+        file.write(b"SRC_DIR=")?;
+        file.write(self.src_dir.as_bytes())?;
+        file.write(b"\n")?;
+
+        file.write(b"OBJ_DIR=")?;
+        file.write(self.obj_dir.as_bytes())?;
+        file.write(b"\n")?;
 
         Ok(())
     }

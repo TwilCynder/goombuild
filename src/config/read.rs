@@ -41,23 +41,28 @@ fn handle_wrong_type(yaml_value: &Yaml, expected: &'static str) -> ContentError 
     }
 }
 
-impl Config<'_> {
-    fn read_exec_name(&mut self, data: &Hash) -> Result<(), ContentError>{
-        match data.get(&Yaml::from_str("exec_name")) {
-            None => Ok(self.exec_name = "main"),
-            Some(v) => match v {
-                Yaml::String(_) => todo!(),
-                val => Err(handle_wrong_type(val, "string"))
-            }
+fn get_str <'a>(data: &'a Hash, key: &'static str) -> Result<Option<&'a str>, ContentError>{
+    match data.get(&Yaml::from_str(key)) {
+        None => Ok(None),
+        Some(v) => match v {
+            Yaml::String(str) => Ok(Some(&str.as_str())),
+            val => Err(handle_wrong_type(val, "string"))
         }
     }
+}
+
+impl <'a> Config<'a> {
 
     pub fn read(data: &Yaml) -> Result<Config, ContentError> {
         let mut config = Config::new();
 
         match &data {
             Yaml::Hash(hash) => {
-                config.read_exec_name(hash)?;
+                if let Some(str) = get_str(hash, "exec")? {config.exec_name = str};
+                if let Some(str) = get_str(hash, "src_dir")? {config.src_dir = str};
+                if let Some(str) = get_str(hash, "obj_dir")? {config.obj_dir = str};
+                
+
                 return Ok(config);
             },
             val => Err(handle_wrong_type(val, "property list"))

@@ -19,18 +19,16 @@ impl Display for ReadError {
         match &self {
             ReadError::IO(error) => {
                 let str = error.to_string();
-                f.write_str(&str);
+                f.write_str(&str)
             }
             ReadError::YamlScan(scan_error) => {
                 let str = scan_error.to_string();
-                f.write_str(&str);
+                f.write_str(&str)
             },
             ReadError::Content(str) => {
-                f.write_str(str);
+                f.write_str(str)
             }
-        };
-
-        Ok(())
+        }
     }
 }
 

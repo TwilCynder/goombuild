@@ -1,60 +1,66 @@
-use std::{error::Error, fs, io};
+use std::fmt::Display;
 
-use yaml_rust2::{yaml::{self, Hash, Yaml}, ScanError, YamlLoader};
+use yaml_rust2::yaml::{Hash, Yaml};
 
 use super::Config;
 
-enum ReadErrorTypes {
-    IO(io::Error),
-    YamlScan(ScanError),
-    Other(&'static str)
+#[derive(Debug)]
+pub enum ContentError {
+    Other(&'static str),
+    WrongType(&'static str)
 }
 
-pub struct ReadError {
-    err: ReadErrorTypes,
-    msg: &'static str
-}
-
-impl From<io::Error> for ReadError {
-    fn from(error: io::Error) -> Self {
-        ReadError {err: ReadErrorTypes::IO(error), msg: "Could not open config file"}
-    }
-}
-
-impl From<ScanError> for ReadError {
-    fn from(error: ScanError) -> Self {
-        ReadError {err: ReadErrorTypes::YamlScan(error), msg: "Could not open config file"}
-    }
-}
-
-impl From<&'static str> for ReadError {
+impl From<&'static str> for ContentError {
     fn from(error: &'static str) -> Self {
-        ReadError {err: ReadErrorTypes::Other(error), msg: "Could not open config file"}
+        ContentError::Other (error)
+    }
+}
+
+impl ContentError {
+    fn wrong_type(expected: &'static str) -> Self {
+        ContentError::WrongType(expected)
+    }
+}
+
+impl Display for ContentError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self {
+            ContentError::Other(error) => f.write_str(&error),
+            ContentError::WrongType(expected) => {
+                f.write_str("Should be a ")?;
+                f.write_str(&expected)
+            }
+        }
+    }
+}
+
+fn handle_wrong_type(yaml_value: &Yaml, expected: &'static str) -> ContentError {
+    match yaml_value {
+        Yaml::BadValue => ContentError::from("Invalid yaml"),
+        _ =>ContentError::wrong_type(expected)
     }
 }
 
 impl Config<'_> {
-    fn read_exec_name(&self, data: &Hash){
-
-    }
-
-    fn read_(data: &Yaml) -> Result<Config, ReadError> {
-        let config = Config::new();
-
-        match &data {
-            Yaml::Hash(hash) => {
-                config.read_exec_name(hash);
-                return Ok(config);
-            },
-            Yaml::BadValue => Err(ReadError::from("Invalid yaml")),
-            _ => Err(ReadError::from("Invalid yaml : should be a property list"))
+    fn read_exec_name(&mut self, data: &Hash) -> Result<(), ContentError>{
+        match data.get(&Yaml::from_str("exec_name")) {
+            None => Ok(self.exec_name = "main"),
+            Some(v) => match v {
+                Yaml::String(_) => todo!(),
+                val => Err(handle_wrong_type(val, "string"))
+            }
         }
     }
 
-    pub fn read(filename: &str) -> Result<(), ReadError> {
-        let raw_input = fs::read_to_string("./test/test.yaml")?;
-        let doc = YamlLoader::load_from_str(&raw_input)?;
+    pub fn read(data: &Yaml) -> Result<Config, ContentError> {
+        let mut config = Config::new();
 
-        Ok(())
+        match &data {
+            Yaml::Hash(hash) => {
+                config.read_exec_name(hash)?;
+                return Ok(config);
+            },
+            val => Err(handle_wrong_type(val, "property list"))
+        }
     }
 }

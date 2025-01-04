@@ -68,11 +68,17 @@ impl <'a> Config<'a> {
                             config.compiler = "g++";
                             config.src_ext = "cpp"
                         },
+                        "c" => {
+                            config.compiler = "gcc";
+                            config.src_ext = "c";
+                        }
                         _ => return Err(ContentError::from("Incorrect kind : must be either c or cpp"))
                     }
                 }   
                 if let Some(str) = get_str(data, "src_ext")? {config.src_ext = str};
                 if let Some(str) = get_str(data, "compiler")? {config.compiler = str};
+                if let Some(str) = get_str(data, "compile_flags")? {config.cflags = str};
+
 
                 return Ok(config);
             },

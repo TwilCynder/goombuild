@@ -25,6 +25,7 @@ impl Config <'_>{
         write_var(&mut file, b"SRC_DIR", self.src_dir)?;
         write_var(&mut file, b"OBJ_DIR", self.obj_dir)?;
         write_var(&mut file, b"SRC_EXT", self.src_ext)?;
+        write_var(&mut file, b"CFLAGS", self.cflags)?;
 
         Ok(())
     }

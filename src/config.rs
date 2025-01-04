@@ -4,7 +4,8 @@ pub struct Config <'a> {
     obj_dir: &'a str,
     src_dir: &'a str,
     src_ext: &'a str,
-    compiler: &'a str
+    compiler: &'a str,
+    cflags: &'a str
 }
 
 impl<'a> Config <'a>{
@@ -16,6 +17,7 @@ impl<'a> Config <'a>{
             src_dir: "src",
             src_ext: "cpp",
             compiler: "g++",
+            cflags: ""
         }    
     }
 }

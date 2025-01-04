@@ -57,11 +57,22 @@ impl <'a> Config<'a> {
         let mut config = Config::new();
 
         match &data {
-            Yaml::Hash(hash) => {
-                if let Some(str) = get_str(hash, "exec")? {config.exec_name = str};
-                if let Some(str) = get_str(hash, "src_dir")? {config.src_dir = str};
-                if let Some(str) = get_str(hash, "obj_dir")? {config.obj_dir = str};
-                
+            Yaml::Hash(data) => {
+                if let Some(str) = get_str(data, "exec")? {config.exec_name = str};
+                if let Some(str) = get_str(data, "include_dir")? {config.include_dir = str};
+                if let Some(str) = get_str(data, "src_dir")? {config.src_dir = str};
+                if let Some(str) = get_str(data, "obj_dir")? {config.obj_dir = str};
+                if let Some(str) = get_str(data, "kind")? {
+                    match str {
+                        "cpp" => {
+                            config.compiler = "g++";
+                            config.src_ext = "cpp"
+                        },
+                        _ => return Err(ContentError::from("Incorrect kind : must be either c or cpp"))
+                    }
+                }   
+                if let Some(str) = get_str(data, "src_ext")? {config.src_ext = str};
+                if let Some(str) = get_str(data, "compiler")? {config.compiler = str};
 
                 return Ok(config);
             },

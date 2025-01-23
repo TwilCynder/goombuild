@@ -41,12 +41,43 @@ fn handle_wrong_type(yaml_value: &Yaml, expected: &'static str) -> ContentError 
     }
 }
 
+fn to_unsinged(source: i64) -> Result<u64, ContentError> {
+    match source.try_into(){
+        Err(_) => Err(ContentError::WrongType("should be a positive integer")),
+        Ok(n) => Ok(n),
+    }
+}
+
+fn get_data<'a>(data: &'a Hash, key: &'static str) -> Option<&'a Yaml> {
+    data.get(&Yaml::from_str(key))
+}
+
+fn get_int<'a>(data: &'a Hash, key: &'static str) -> Result<Option<i64>, ContentError> {
+    match get_data(data, key) {
+        Some(v) => match v {
+            Yaml::Integer(n) => Ok(Some(*n)),
+            val => Err(handle_wrong_type(val, "integer"))
+        },
+        None => Ok(None),
+    }
+}
+
 fn get_str <'a>(data: &'a Hash, key: &'static str) -> Result<Option<&'a str>, ContentError>{
     match data.get(&Yaml::from_str(key)) {
         None => Ok(None),
         Some(v) => match v {
             Yaml::String(str) => Ok(Some(&str.as_str())),
             val => Err(handle_wrong_type(val, "string"))
+        }
+    }
+}
+
+fn get_hash<'a>(data: &'a Hash, key: &'static str) -> Result<Option<&'a Hash>, ContentError>{
+    match data.get(&Yaml::from_str(&key)) {
+        None => Ok(None),
+        Some(v) => match v {
+            Yaml::Hash(hash) => Ok(Some(hash)),
+            val => Err(handle_wrong_type(val, "table"))
         }
     }
 }
@@ -61,6 +92,10 @@ impl <'a> Config<'a> {
                 if let Some(str) = get_str(data, "exec")? {config.exec_name = str};
                 if let Some(str) = get_str(data, "include_dir")? {config.include_dir = str};
                 if let Some(str) = get_str(data, "src_dir")? {config.src_dir = str};
+                if let Some(hash) = get_hash(data, "sources")? {
+                    if let Some(str) = get_str(hash, "dir")? {config.src_dir = str}
+                    if let Some(n) = get_int(hash, "depth")? {config.src_depth = to_unsinged(n)?}
+                }
                 if let Some(str) = get_str(data, "obj_dir")? {config.obj_dir = str};
                 if let Some(str) = get_str(data, "kind")? {
                     match str {

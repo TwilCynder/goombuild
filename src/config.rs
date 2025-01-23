@@ -3,6 +3,7 @@ pub struct Config <'a> {
     include_dir: &'a str,
     obj_dir: &'a str,
     src_dir: &'a str,
+    src_depth: u64,
     src_ext: &'a str,
     compiler: &'a str,
     cflags: &'a str
@@ -15,6 +16,7 @@ impl<'a> Config <'a>{
             include_dir: "include",
             obj_dir: "obj",
             src_dir: "src",
+            src_depth: 0,
             src_ext: "cpp",
             compiler: "g++",
             cflags: ""

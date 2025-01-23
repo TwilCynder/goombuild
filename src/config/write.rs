@@ -68,7 +68,13 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.$(SRC_EXT)
 $(EXEC): $(OBJS)
 \t$(CC) $^ -o $@ $(LDFLAGS) 
 
-        ", string_if(self.src_depth > 0, || concat_str("-depth ", self.src_depth))).as_bytes())?;
+clear: 
+\t-@rm $(EXEC)
+\t-@rm -r $(OBJ_DIR)/*
+
+        ", 
+        string_if(self.src_depth > 0, || concat_str("-maxdepth ", self.src_depth))).as_bytes()
+    )?;
 
         Ok(())
     }

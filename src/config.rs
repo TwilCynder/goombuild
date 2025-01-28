@@ -1,6 +1,6 @@
 pub struct Config <'a> {
     exec_name: &'a str, 
-    include_dir: &'a str,
+    include_dir: Vec<&'a str>,
     obj_dir: &'a str,
     src_dir: &'a str,
     src_depth: u64,
@@ -13,7 +13,7 @@ impl<'a> Config <'a>{
     pub fn new() -> Config <'a> {
         Config { 
             exec_name: "main",
-            include_dir: "include",
+            include_dir: Vec::from(["include"]),
             obj_dir: "obj",
             src_dir: "src",
             src_depth: 0,

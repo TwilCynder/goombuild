@@ -38,7 +38,7 @@ impl Config <'_>{
 
         write_var(&mut file, b"CC", self.compiler)?;
         write_var(&mut file, b"EXEC", self.exec_name)?;
-        write_var(&mut file, b"INCLUDE_DIR", self.include_dir)?;
+        //write_var(&mut file, b"INCLUDE_DIR", self.include_dir)?;
         write_var(&mut file, b"SRC_DIR", self.src_dir)?;
         write_var(&mut file, b"OBJ_DIR", self.obj_dir)?;
         write_var(&mut file, b"SRC_EXT", self.src_ext)?;

@@ -54,46 +54,38 @@ fn get_data<'a>(data: &'a Hash, key: &'static str) -> Option<&'a Yaml> {
 
 type YamlResult<T> = Result<Option<T>, ContentError>;
 
-trait YamlTypeExtractor <'a, T> {
-    fn extract(yaml: &'a Yaml) -> Result<Option<T>, ContentError>;
-}
-
-fn get_as<'a, T, E: YamlTypeExtractor<'a, T>>(data: &'a Hash, key: &'static str) -> YamlResult<T> {
+fn get_as<'a, T, F: Fn(&'a Yaml) -> YamlResult<T>>(extract: F, data: &'a Hash, key: &'static str) -> YamlResult<T> {
     match get_data(data, key){
         None => Ok(None),
-        Some(v) => E::extract(v)
+        Some(v) => extract(v)
     }
 }
 
-struct StringExtractor; impl<'a> YamlTypeExtractor<'a, &'a str> for StringExtractor {
-    fn extract(yaml: &'a Yaml) -> YamlResult<&'a str> {
-        match yaml {
-            Yaml::String(str) => Ok(Some(str.as_str())),
-            _ => Err(handle_wrong_type(&yaml, "string"))
-        }
+fn extract_str(yaml: &Yaml) -> YamlResult<&str> {
+    match yaml {
+        Yaml::String(str) => Ok(Some(str.as_str())),
+        _ => Err(handle_wrong_type(&yaml, "string"))
     }
 }
-fn get_str<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a str>{get_as::<'a, &'a str, StringExtractor>(data, key)}
+fn get_str<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a str>{get_as(extract_str, data, key)}
 
-struct IntExtractor; impl <'a> YamlTypeExtractor<'a, i64> for IntExtractor {
-    fn extract(yaml: &'a Yaml) -> YamlResult<i64> {
-        match yaml {
-            Yaml::Integer(n) => Ok(Some(*n)),
-            val => Err(handle_wrong_type(val, "integer"))
-        }
-    }
-}
-fn get_int<'a>(data: &'a Hash, key: &'static str) -> YamlResult<i64>{get_as::<'a, i64, IntExtractor>(data, key)}
 
-struct HashExtractor; impl <'a> YamlTypeExtractor<'a, &'a Hash> for HashExtractor {
-    fn extract(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContentError> {
-        match yaml {
-            Yaml::Hash(hash) => Ok(Some(hash)),
-            val => Err(handle_wrong_type(val, "table"))
-        }
+fn extract_int(yaml: & Yaml) -> YamlResult<i64> {
+    match yaml {
+        Yaml::Integer(n) => Ok(Some(*n)),
+        _ => Err(handle_wrong_type(&yaml, "string"))
     }
 }
-fn get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as::<'a, &'a Hash, HashExtractor>(data, key)}
+fn get_int(data: &Hash, key: &'static str) -> YamlResult<i64>{get_as(extract_int, data, key)}
+
+fn extract_hash<'a>(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContentError> {
+    match yaml {
+        Yaml::Hash(hash) => Ok(Some(hash)),
+        val => Err(handle_wrong_type(val, "table"))
+    }
+}
+
+fn get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as(extract_hash, data, key)}
 
 impl <'a> Config<'a> {
     pub fn read(data: &'a Yaml) -> Result<Config<'a>, ContentError> {
@@ -102,14 +94,30 @@ impl <'a> Config<'a> {
         match &data {
             Yaml::Hash(data) => {
                 if let Some(str) = get_str(data, "exec")? {config.exec_name = str};
-                if let Some(str) = get_str(data, "include_dir")? {config.include_dir = str};
+
+                if let Some(yaml) = get_data(data, "include_dir") {
+                    config.include_dir.clear();
+                    match yaml {
+                        Yaml::String(str) => {
+                            config.include_dir.push(str);
+                        },
+                        Yaml::Array(arr) => {
+                            for yaml in arr {
+                                if let Some(str) = extract_str(yaml)? {
+                                    config.include_dir.push(str);
+                                }
+                            }
+                        }
+                        val => return Err(handle_wrong_type(val, "string or array thereof"))
+                    }
+                }
                 if let Some(str) = get_str(data, "src_dir")? {config.src_dir = str};
                 if let Some(hash) = get_hash(data, "sources")? {
                     if let Some(str) = get_str(hash, "dir")? {config.src_dir = str}
                     if let Some(n) = get_int(hash, "depth")? {config.src_depth = to_unsinged(n)?}
                 }
-                if let Some(str) = get_str(hash, "obj_dir")? {config.obj_dir = str};
-                if let Some(str) = get_str(hash, "kind")? {
+                if let Some(str) = get_str(data, "obj_dir")? {config.obj_dir = str};
+                if let Some(str) = get_str(data, "kind")? {
                     match str {
                         "cpp" => {
                             config.compiler = "g++";
@@ -122,9 +130,9 @@ impl <'a> Config<'a> {
                         _ => return Err(ContentError::from("Incorrect kind : must be either c or cpp"))
                     }
                 }   
-                if let Some(str) = get_str(hash, "src_ext")? {config.src_ext = str};
-                if let Some(str) = get_str(hash, "compiler")? {config.compiler = str};
-                if let Some(str) = get_str(hash, "compile_flags")? {config.cflags = str};
+                if let Some(str) = get_str(data, "src_ext")? {config.src_ext = str};
+                if let Some(str) = get_str(data, "compiler")? {config.compiler = str};
+                if let Some(str) = get_str(data, "compile_flags")? {config.cflags = str};
 
 
                 return Ok(config);

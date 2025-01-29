@@ -38,6 +38,15 @@ impl Config <'_>{
 
         write_var(&mut file, b"CC", self.compiler)?;
         write_var(&mut file, b"EXEC", self.exec_name)?;
+
+        file.write(b"INCLUDE=")?;
+        for dir in &self.include_dir {
+            file.write(b"-I")?;
+            file.write(dir.as_bytes())?;
+            file.write(b" ")?;
+        }
+        nl(&mut file)?;
+
         //write_var(&mut file, b"INCLUDE_DIR", self.include_dir)?;
         write_var(&mut file, b"SRC_DIR", self.src_dir)?;
         write_var(&mut file, b"OBJ_DIR", self.obj_dir)?;
@@ -63,7 +72,7 @@ start:
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.$(SRC_EXT)
 \t@mkdir -p $(dir $@)
-\t$(CC) -I$(INCLUDE_DIR) -c $< -o $@
+\t$(CC) -I$(INCLUDE) -c $< -o $@
 
 $(EXEC): $(OBJS)
 \t$(CC) $^ -o $@ $(LDFLAGS) 

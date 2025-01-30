@@ -84,8 +84,25 @@ fn extract_hash<'a>(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContentError> {
         val => Err(handle_wrong_type(val, "table"))
     }
 }
-
 fn get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as(extract_hash, data, key)}
+
+fn array_or_string_into_vec<'a>(yaml: &'a Yaml, vec: &mut Vec<&'a str>) -> Result<(), ContentError> {
+    vec.clear();
+    match yaml {
+        Yaml::String(str) => {
+            vec.push(str);
+        },
+        Yaml::Array(arr) => {
+            for yaml in arr {
+                if let Some(str) = extract_str(yaml)? {
+                    vec.push(str);
+                }
+            };
+        }
+        val => return Err(handle_wrong_type(val, "string or array thereof"))
+    };
+    Ok(())
+}
 
 impl <'a> Config<'a> {
     pub fn read(data: &'a Yaml) -> Result<Config<'a>, ContentError> {
@@ -96,20 +113,7 @@ impl <'a> Config<'a> {
                 if let Some(str) = get_str(data, "exec")? {config.exec_name = str};
 
                 if let Some(yaml) = get_data(data, "include_dir") {
-                    config.include_dir.clear();
-                    match yaml {
-                        Yaml::String(str) => {
-                            config.include_dir.push(str);
-                        },
-                        Yaml::Array(arr) => {
-                            for yaml in arr {
-                                if let Some(str) = extract_str(yaml)? {
-                                    config.include_dir.push(str);
-                                }
-                            }
-                        }
-                        val => return Err(handle_wrong_type(val, "string or array thereof"))
-                    }
+                    array_or_string_into_vec(yaml, &mut config.include_dir)?
                 }
                 if let Some(str) = get_str(data, "src_dir")? {config.src_dir = str};
                 if let Some(hash) = get_hash(data, "sources")? {

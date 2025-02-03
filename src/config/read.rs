@@ -34,7 +34,7 @@ impl Display for ContentError {
     }
 }
 
-fn to_unsinged(source: i64) -> Result<u64, ContentError> {
+fn _to_unsinged(source: i64) -> Result<u64, ContentError> {
     match source.try_into(){
         Err(_) => Err(ContentError::WrongType("should be a positive integer")),
         Ok(n) => Ok(n),
@@ -78,13 +78,13 @@ fn extract_int(yaml: & Yaml) -> YamlResult<i64> {
 }
 fn get_int(data: &Hash, key: &'static str) -> YamlResult<i64>{get_as(extract_int, data, key)}
 
-fn extract_hash<'a>(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContentError> {
+fn _extract_hash<'a>(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContentError> {
     match yaml {
         Yaml::Hash(hash) => Ok(Some(hash)),
         val => Err(handle_wrong_type(val, "table"))
     }
 }
-fn get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as(extract_hash, data, key)}
+fn _get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as(_extract_hash, data, key)}
 
 fn array_or_string_into_vec<'a>(yaml: &'a Yaml, vec: &mut Vec<&'a str>) -> Result<(), ContentError> {
     vec.clear();
@@ -126,7 +126,7 @@ impl <'a> SourceDir <'a> {
             Yaml::String(str) => Ok(source.read_from_str(str)),
             Yaml::Hash(hash) => source.read_from_hash(hash),
             val => Err(handle_wrong_type(val, "string or object"))
-        };
+        }?;
         Ok(source)
     }
 }
@@ -142,7 +142,7 @@ impl <'a> Config<'a> {
                 if let Some(yaml) = get_data(data, "include_dir") {
                     array_or_string_into_vec(yaml, &mut config.include_dir)?
                 }
-                if let Some(yaml) = get_data(data, "source") {
+                if let Some(yaml) = get_data(data, "sources") {
                     config.source.clear();
                     match yaml {
                         Yaml::Array(arr) => {

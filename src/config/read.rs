@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use yaml_rust2::yaml::{Hash, Yaml};
 
-use super::Config;
+use super::{Config, SourceDir};
 
 #[derive(Debug)]
 pub enum ContentError {
@@ -104,6 +104,33 @@ fn array_or_string_into_vec<'a>(yaml: &'a Yaml, vec: &mut Vec<&'a str>) -> Resul
     Ok(())
 }
 
+impl <'a> SourceDir <'a> {
+    fn read_from_str(&mut self, str: &'a str){
+        self.dir = str;
+    }
+
+    fn read_from_hash(&mut self, hash: &'a Hash) -> Result<(), ContentError>{
+        if let Some(str) = get_str(&hash, "dir")?{
+            self.dir = str;
+        } else {
+            return Err(ContentError::Other("Source directory is missing"))
+        }
+        self.ext = get_str(&hash, "ext")?;
+        self.depth = get_int(&hash, "depth")?;
+        Ok(())
+    }
+
+    fn read_from_hash_or_string(yaml: &'a Yaml) -> Result<SourceDir<'a>, ContentError> {
+        let mut source = Self::new();
+        match yaml {
+            Yaml::String(str) => Ok(source.read_from_str(str)),
+            Yaml::Hash(hash) => source.read_from_hash(hash),
+            val => Err(handle_wrong_type(val, "string or object"))
+        };
+        Ok(source)
+    }
+}
+
 impl <'a> Config<'a> {
     pub fn read(data: &'a Yaml) -> Result<Config<'a>, ContentError> {
         let mut config = Config::new();
@@ -115,26 +142,40 @@ impl <'a> Config<'a> {
                 if let Some(yaml) = get_data(data, "include_dir") {
                     array_or_string_into_vec(yaml, &mut config.include_dir)?
                 }
-                if let Some(str) = get_str(data, "src_dir")? {config.src_dir = str};
-                if let Some(hash) = get_hash(data, "sources")? {
-                    if let Some(str) = get_str(hash, "dir")? {config.src_dir = str}
-                    if let Some(n) = get_int(hash, "depth")? {config.src_depth = to_unsinged(n)?}
+                if let Some(yaml) = get_data(data, "source") {
+                    config.source.clear();
+                    match yaml {
+                        Yaml::Array(arr) => {
+                            for yaml in arr {
+                                config.source.push(SourceDir::read_from_hash_or_string(yaml)?);
+                            }
+                        },
+                        val => {
+                            config.source.push(SourceDir::read_from_hash_or_string(val)?)
+                        }
+                    }
+                    if let Some(str) = get_str(data, "src_ext")?{config.default_ext = str};
+                } else {
+                    let Some(source) = config.source.get_mut(0) else {unreachable!("The source vector should never be empty (index 0 should always be valid)")};
+                    if let Some(str) = get_str(data, "src_dir")? {source.dir = str};
+                    if let Some(n) = get_int(data, "src_depth")? {source.depth = Some(n)};
+                    if let Some(str) = get_str(data, "src_ext")?{source.ext = Some(str)};
                 }
+
                 if let Some(str) = get_str(data, "obj_dir")? {config.obj_dir = str};
                 if let Some(str) = get_str(data, "kind")? {
                     match str {
                         "cpp" => {
                             config.compiler = "g++";
-                            config.src_ext = "cpp"
+                            config.default_ext = "cpp"
                         },
                         "c" => {
                             config.compiler = "gcc";
-                            config.src_ext = "c";
+                            config.default_ext = "c";
                         }
                         _ => return Err(ContentError::from("Incorrect kind : must be either c or cpp"))
                     }
                 }   
-                if let Some(str) = get_str(data, "src_ext")? {config.src_ext = str};
                 if let Some(str) = get_str(data, "compiler")? {config.compiler = str};
                 if let Some(str) = get_str(data, "compile_flags")? {config.cflags = str};
 

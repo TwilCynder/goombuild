@@ -66,16 +66,16 @@ impl Config <'_>{
         //--- Processing sources into objs
         file.write(b"OBJS=")?;
         for source in &self.source {
+            let ext = if let Some(ext) = source.ext {ext} else {self.default_ext};
             println!("{} {:?} {:?}", source.dir, source.ext, source.depth);
 
             write!(file, "
-_SRC= $(shell find {}{} -name \"*.{}\")
-_OBJS= $(_SRC:.$(SRC_EXT)=.o)
+_SRC= $(shell find {}{} -name \"*.{ext}\")
+_OBJS= $(_SRC:.{ext}=.o)
 OBJS += $(patsubst $(SRC_DIR)/%,$(OBJ_DIR)/%,$(_OBJS))
                 ", 
                 source.dir,
                 string_if_option(source.depth, |depth: i64| string_if(depth > 0, || concat_str(" -maxdepth ", depth))),
-                if let Some(ext) = source.ext {ext} else {self.default_ext}
             )?;
 
         }

@@ -1,7 +1,8 @@
 struct SourceDir<'a> {
     dir: &'a str,
     ext: Option<&'a str>,
-    depth: Option<i64>
+    depth: Option<i64>,
+    included: bool
 }
 
 impl <'a> SourceDir<'a> {
@@ -9,7 +10,8 @@ impl <'a> SourceDir<'a> {
         SourceDir {
             dir: "src",
             ext: None,
-            depth: None
+            depth: None,
+            included: false
         }
     }
 }

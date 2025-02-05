@@ -69,7 +69,6 @@ fn extract_str(yaml: &Yaml) -> YamlResult<&str> {
 }
 fn get_str<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a str>{get_as(extract_str, data, key)}
 
-
 fn extract_int(yaml: & Yaml) -> YamlResult<i64> {
     match yaml {
         Yaml::Integer(n) => Ok(Some(*n)),
@@ -77,6 +76,15 @@ fn extract_int(yaml: & Yaml) -> YamlResult<i64> {
     }
 }
 fn get_int(data: &Hash, key: &'static str) -> YamlResult<i64>{get_as(extract_int, data, key)}
+
+
+fn extract_bool(yaml: & Yaml) -> YamlResult<bool> {
+    match yaml {
+        Yaml::Boolean(b) => Ok(Some(*b)),
+        _ => Err(handle_wrong_type(&yaml, "string"))
+    }
+}
+fn get_bool(data: &Hash, key: &'static str) -> YamlResult<bool>{get_as(extract_bool, data, key)}
 
 fn _extract_hash<'a>(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContentError> {
     match yaml {
@@ -117,6 +125,7 @@ impl <'a> SourceDir <'a> {
         }
         self.ext = get_str(&hash, "ext")?;
         self.depth = get_int(&hash, "depth")?;
+        if let Some(b) = get_bool(&hash, "included")? {self.included = b};
         Ok(())
     }
 
@@ -160,6 +169,11 @@ impl <'a> Config<'a> {
                     if let Some(str) = get_str(data, "src_dir")? {source.dir = str};
                     if let Some(n) = get_int(data, "src_depth")? {source.depth = Some(n)};
                     if let Some(str) = get_str(data, "src_ext")?{source.ext = Some(str)};
+                }
+                for source in &config.source {
+                    if source.included {
+                        config.include_dir.push(source.dir);
+                    }
                 }
 
                 if let Some(str) = get_str(data, "obj_dir")? {config.obj_dir = str};

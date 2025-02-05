@@ -1,4 +1,4 @@
-use std::{fs::File, io::{self, Write}};
+use std::{collections::HashSet, fs::File, io::{self, Write}};
 
 use super::Config;
 
@@ -20,8 +20,12 @@ fn write_var(file: &mut File, varname: &[u8], val: &str) -> Result<(), io::Error
     Ok(())
 }
 
-fn concat_str<T: ToString>(str1: &'static str, str2: T) -> String {
+fn concat_str<'a, T: ToString>(str1: &'static str, str2: T) -> String {
     str1.to_owned() + (&str2.to_string())
+}
+
+fn concat_str_post<'a, T: ToString>(str1: T, str2: &'static str) -> String {
+    (str1.to_string()) + &str2.to_owned()
 }
 
 fn string_if<F: Fn()->String>(cond: bool, expr: F) -> String{
@@ -67,16 +71,16 @@ impl Config <'_>{
         file.write(b"OBJS=")?;
         for source in &self.source {
             let ext = if let Some(ext) = source.ext {ext} else {self.default_ext};
+            let dir = source.dir;
             println!("{} {:?} {:?}", source.dir, source.ext, source.depth);
 
             write!(file, "
-_SRC= $(shell find {}{} -name \"*.{ext}\")
+_SRC= $(shell find {dir}{} -name \"*.{ext}\")
 _OBJS= $(_SRC:.{ext}=.o)
-OBJS := $(OBJS) $(patsubst {}/%,$(OBJ_DIR)/%,$(_OBJS))
+OBJS := $(OBJS) $(patsubst {dir}/%,$(OBJ_DIR)/{}%,$(_OBJS))
                 ", 
-                source.dir,
                 string_if_option(source.depth, |depth: i64| string_if(depth > 0, || concat_str(" -maxdepth ", depth))),
-                source.dir,
+                string_if(self.keep_source_dir_names, || concat_str_post(dir, "/"))
             )?;
 
         }
@@ -109,15 +113,36 @@ clear:
 
         ")?;
 
-        for source in &self.source {
-            write!(file, "
+        if self.keep_source_dir_names {
+            let mut exts = HashSet::<String>::new();
+            for source in &self.source {
+                let ext = match source.ext {
+                    Some(str) => str,
+                    None => self.default_ext
+                };
+                println!("{ext}");
+                
+                if !exts.contains(ext) {
+                    exts.insert(ext.to_owned());
+                    write!(file, "
+$(OBJ_DIR)/%.o: %.{ext}
+\t@mkdir -p $(dir $@)
+\t$(CC) $(INCLUDE) -c $< -o $@
+                        ",
+                    )?;
+                }
+            }
+        } else {
+            for source in &self.source {
+                write!(file, "
 $(OBJ_DIR)/%.o: {}/%.{}
 \t@mkdir -p $(dir $@)
 \t$(CC) $(INCLUDE) -c $< -o $@
-                ",
-                source.dir,
-                if let Some(ext) = source.ext {ext} else {self.default_ext}
-            )?;
+                    ",
+                    source.dir,
+                    if let Some(ext) = source.ext {ext} else {self.default_ext}
+                )?;
+            }
         }
 
         Ok(())

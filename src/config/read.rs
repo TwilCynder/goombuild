@@ -175,7 +175,7 @@ impl <'a> Config<'a> {
                         config.include_dir.push(source.dir);
                     }
                 }
-
+                if let Some(b) = get_bool(data, "keep_source_dir_names")? {config.keep_source_dir_names = b};
                 if let Some(str) = get_str(data, "obj_dir")? {config.obj_dir = str};
                 if let Some(str) = get_str(data, "kind")? {
                     match str {

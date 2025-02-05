@@ -55,6 +55,16 @@ impl Config <'_>{
         write_var(&mut file, b"OBJ_DIR", self.obj_dir)?;
         //write_var(&mut file, b"SRC_EXT", self.src_ext)?;
         write_var(&mut file, b"CFLAGS", self.cflags)?;
+        write_var(&mut file, b"LDFLAGS", self.ldflags)?;
+
+        //--- Libs
+        file.write(b"LIBS=")?;
+        for lib in &self.libs {
+            file.write(b"-l")?;
+            file.write(lib.as_bytes())?;
+            file.write(b" ")?;
+        }
+        nl(&mut file)?;
 
         //--- Include path
         file.write(b"INCLUDE=")?;
@@ -105,7 +115,7 @@ start:
 	mkdir -p $(OBJ_DIR)
 
 $(EXEC): $(OBJS)
-\t$(CC) $^ -o $@ $(LDFLAGS) 
+\t$(CC) $^ -o $@ $(LDFLAGS) $(LIBS)
 
 clear: 
 \t-@rm -f $(EXEC) 2> /dev/null

@@ -24,7 +24,9 @@ pub struct Config <'a> {
     source: Vec<SourceDir<'a>>,
     default_ext: &'a str,
     compiler: &'a str,
-    cflags: &'a str
+    cflags: &'a str,
+    ldflags: &'a str,
+    libs: Vec<&'a str>
 }
 
 impl<'a> Config <'a>{
@@ -37,7 +39,9 @@ impl<'a> Config <'a>{
             keep_source_dir_names: false,
             default_ext: "cpp",
             compiler: "g++",
-            cflags: ""
+            cflags: "",
+            ldflags: "",
+            libs: Vec::new()
         }    
     }
 }

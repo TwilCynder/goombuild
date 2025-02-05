@@ -151,6 +151,9 @@ impl <'a> Config<'a> {
                 if let Some(yaml) = get_data(data, "include_dir") {
                     array_or_string_into_vec(yaml, &mut config.include_dir)?
                 }
+                if let Some(yaml) = get_data(data, "libs") {
+                    array_or_string_into_vec(yaml, &mut config.libs)?
+                }
                 if let Some(yaml) = get_data(data, "sources") {
                     config.source.clear();
                     match yaml {
@@ -192,6 +195,7 @@ impl <'a> Config<'a> {
                 }   
                 if let Some(str) = get_str(data, "compiler")? {config.compiler = str};
                 if let Some(str) = get_str(data, "compile_flags")? {config.cflags = str};
+                if let Some(str) = get_str(data, "link_flags")? {config.ldflags = str};
 
 
                 return Ok(config);

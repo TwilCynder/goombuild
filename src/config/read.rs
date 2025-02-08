@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use yaml_rust2::yaml::{Hash, Yaml};
 
-use super::{Config, SourceDir};
+use super::{BuildConfig, Config, SourceDir};
 
 #[derive(Debug)]
 pub enum ContentError {
@@ -54,6 +54,13 @@ fn get_data<'a>(data: &'a Hash, key: &'static str) -> Option<&'a Yaml> {
 
 type YamlResult<T> = Result<Option<T>, ContentError>;
 
+fn try_map_option <T, U, F: Fn(T) -> Result<U, ContentError>> (opt: Option<T>, f: F) -> YamlResult<U> {
+    Ok(match opt {
+        None => None,
+        Some(v) => Some(f(v)?)
+    })
+}
+
 fn get_as<'a, T, F: Fn(&'a Yaml) -> YamlResult<T>>(extract: F, data: &'a Hash, key: &'static str) -> YamlResult<T> {
     match get_data(data, key){
         None => Ok(None),
@@ -94,8 +101,8 @@ fn _extract_hash<'a>(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContentError> {
 }
 fn _get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as(_extract_hash, data, key)}
 
-fn array_or_string_into_vec<'a>(yaml: &'a Yaml, vec: &mut Vec<&'a str>) -> Result<(), ContentError> {
-    vec.clear();
+fn array_or_string_into_vec<'a>(yaml: &'a Yaml) -> Result<Vec<&'a str>, ContentError> {
+    let mut vec = Vec::<&'a str>::new();
     match yaml {
         Yaml::String(str) => {
             vec.push(str);
@@ -109,7 +116,7 @@ fn array_or_string_into_vec<'a>(yaml: &'a Yaml, vec: &mut Vec<&'a str>) -> Resul
         }
         val => return Err(handle_wrong_type(val, "string or array thereof"))
     };
-    Ok(())
+    Ok(vec)
 }
 
 impl <'a> SourceDir <'a> {
@@ -140,20 +147,39 @@ impl <'a> SourceDir <'a> {
     }
 }
 
+impl <'a> BuildConfig<'a> {
+    pub fn read(&mut self, data: &'a Hash) -> Result<(), ContentError>{
+        self.exec_name = get_str(data, "exec")?;
+        self.libs = try_map_option(get_data(data, "libs"), array_or_string_into_vec)?;
+        self.ldflags = get_str(data, "link_options")?;
+        self.cflags = get_str(data, "compile_options")?;
+        self.compiler = get_str(data, "compiler")?;
+
+        Ok(())
+    }
+}
+
 impl <'a> Config<'a> {
     pub fn read(data: &'a Yaml) -> Result<Config<'a>, ContentError> {
         let mut config = Config::new();
 
         match &data {
             Yaml::Hash(data) => {
-                if let Some(str) = get_str(data, "exec")? {config.exec_name = str};
 
-                if let Some(yaml) = get_data(data, "include_dir") {
-                    array_or_string_into_vec(yaml, &mut config.include_dir)?
-                }
-                if let Some(yaml) = get_data(data, "libs") {
-                    array_or_string_into_vec(yaml, &mut config.libs)?
-                }
+                if let Some(str) = get_str(data, "kind")? {
+                    match str {
+                        "cpp" => {
+                            config.default_config.compiler = Some("g++");
+                            config.default_ext = "cpp"
+                        },
+                        "c" => {
+                            config.default_config.compiler = Some("gcc");
+                            config.default_ext = "c";
+                        }
+                        _ => return Err(ContentError::from("Incorrect kind : must be either c or cpp"))
+                    }
+                } 
+
                 if let Some(yaml) = get_data(data, "sources") {
                     config.source.clear();
                     match yaml {
@@ -173,6 +199,9 @@ impl <'a> Config<'a> {
                     if let Some(n) = get_int(data, "src_depth")? {source.depth = Some(n)};
                     if let Some(str) = get_str(data, "src_ext")?{source.ext = Some(str)};
                 }
+                if let Some(yaml) = get_data(data, "include_dirs") {
+                    config.include_dir = array_or_string_into_vec(yaml)?;
+                }
                 for source in &config.source {
                     if source.included {
                         config.include_dir.push(source.dir);
@@ -180,23 +209,8 @@ impl <'a> Config<'a> {
                 }
                 if let Some(b) = get_bool(data, "keep_source_dir_names")? {config.keep_source_dir_names = b};
                 if let Some(str) = get_str(data, "obj_dir")? {config.obj_dir = str};
-                if let Some(str) = get_str(data, "kind")? {
-                    match str {
-                        "cpp" => {
-                            config.compiler = "g++";
-                            config.default_ext = "cpp"
-                        },
-                        "c" => {
-                            config.compiler = "gcc";
-                            config.default_ext = "c";
-                        }
-                        _ => return Err(ContentError::from("Incorrect kind : must be either c or cpp"))
-                    }
-                }   
-                if let Some(str) = get_str(data, "compiler")? {config.compiler = str};
-                if let Some(str) = get_str(data, "compile_flags")? {config.cflags = str};
-                if let Some(str) = get_str(data, "link_flags")? {config.ldflags = str};
 
+                config.default_config.read(data)?;
 
                 return Ok(config);
             },

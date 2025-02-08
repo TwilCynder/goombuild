@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fs::File, io::{self, Write}};
 
-use super::Config;
+use super::{init_default, Config};
 
 fn nl(file: &mut File) -> Result<(), io::Error> {
     file.write(b"\n")?;
@@ -47,8 +47,17 @@ impl Config <'_>{
     fn write_(&self, filename: &str) -> Result<(), io::Error>{
         let mut file = File::create(filename)?;
 
+        let mut defaults = init_default();
+
+        macro_rules! or_default {
+            ($config: expr, $prop_name: ident) => {
+                $config.$prop_name.unwrap_or(&defaults.$prop_name)
+            };
+        }
+
         //--- Variables
-        write_var(&mut file, b"CC", self.compiler)?;
+        let res = 
+        write_var(&mut file, b"CC", or_default!(self.default_config, compiler))?;
         write_var(&mut file, b"EXEC", self.exec_name)?;
         //write_var(&mut file, b"INCLUDE_DIR", self.include_dir)?;
         //write_var(&mut file, b"SRC_DIR", self.src_dir)?;

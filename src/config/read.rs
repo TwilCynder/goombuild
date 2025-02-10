@@ -199,7 +199,7 @@ impl <'a> Config<'a> {
                     if let Some(n) = get_int(data, "src_depth")? {source.depth = Some(n)};
                     if let Some(str) = get_str(data, "src_ext")?{source.ext = Some(str)};
                 }
-                if let Some(yaml) = get_data(data, "include_dirs") {
+                if let Some(yaml) = get_data(data, "include") {
                     config.include_dir = array_or_string_into_vec(yaml)?;
                 }
                 for source in &config.source {

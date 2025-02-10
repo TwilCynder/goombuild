@@ -43,32 +43,34 @@ fn string_if_option<T, F: Fn(T)->String>(opt: Option<T>, expr: F) -> String{
     }
 }
 
+
+
 impl Config <'_>{
     fn write_(&self, filename: &str) -> Result<(), io::Error>{
         let mut file = File::create(filename)?;
 
-        let mut defaults = init_default();
+        let defaults = init_default();
 
         macro_rules! or_default {
             ($config: expr, $prop_name: ident) => {
-                $config.$prop_name.unwrap_or(&defaults.$prop_name)
+                $config.$prop_name.as_ref().unwrap_or(&defaults.$prop_name)
             };
         }
 
         //--- Variables
-        let res = 
         write_var(&mut file, b"CC", or_default!(self.default_config, compiler))?;
-        write_var(&mut file, b"EXEC", self.exec_name)?;
+        write_var(&mut file, b"EXEC", or_default!(self.default_config, exec_name))?;
         //write_var(&mut file, b"INCLUDE_DIR", self.include_dir)?;
         //write_var(&mut file, b"SRC_DIR", self.src_dir)?;
         write_var(&mut file, b"OBJ_DIR", self.obj_dir)?;
         //write_var(&mut file, b"SRC_EXT", self.src_ext)?;
-        write_var(&mut file, b"CFLAGS", self.cflags)?;
-        write_var(&mut file, b"LDFLAGS", self.ldflags)?;
+        write_var(&mut file, b"CFLAGS", or_default!(self.default_config, cflags))?;
+        write_var(&mut file, b"LDFLAGS", or_default!(self.default_config, ldflags))?;
 
         //--- Libs
+        let libs = or_default!(self.default_config, libs);
         file.write(b"LIBS=")?;
-        for lib in &self.libs {
+        for lib in libs {
             file.write(b"-l")?;
             file.write(lib.as_bytes())?;
             file.write(b" ")?;

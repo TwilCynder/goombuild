@@ -29,7 +29,7 @@ pub struct Config <'a> {
 
 #[derive(Default)]
 pub struct Target<'a> {
-    confif: BuildConfig<'a>
+    config: BuildConfig<'a>
 }
 
 #[derive(Default)]
@@ -43,7 +43,6 @@ pub struct BuildConfig<'a> {
 
 pub struct DefaultConfig {
     exec_name: &'static str, 
-    obj_dir: &'static str,
     compiler: &'static str,
     cflags: &'static str,
     ldflags: &'static str,
@@ -70,7 +69,6 @@ impl<'a> Config <'a>{
 fn init_default() -> DefaultConfig {
     DefaultConfig {
         exec_name: "main",
-        obj_dir: "obj",
         compiler: "gcc",
         cflags: "",
         ldflags: "",

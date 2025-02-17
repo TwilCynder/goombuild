@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fs::File, io::{self, Write}};
 
-use super::{init_default, Config};
+use super::{init_default, Config, Target};
 
 fn nl(file: &mut File) -> Result<(), io::Error> {
     file.write(b"\n")?;
@@ -43,9 +43,14 @@ fn string_if_option<T, F: Fn(T)->String>(opt: Option<T>, expr: F) -> String{
     }
 }
 
-
-
 impl Config <'_>{
+    pub fn write(&self, filename: &str){
+        match self.write_(filename) {
+            Err(msg) => println!("Couldn't write Makefile at path {filename} : {msg}"),
+            _ => println!("Successfully wrote config to {filename}")
+        }
+    }
+
     fn write_(&self, filename: &str) -> Result<(), io::Error>{
         let mut file = File::create(filename)?;
 
@@ -93,7 +98,6 @@ impl Config <'_>{
         for source in &self.source {
             let ext = if let Some(ext) = source.ext {ext} else {self.default_ext};
             let dir = source.dir;
-            println!("{} {:?} {:?}", source.dir, source.ext, source.depth);
 
             write!(file, "
 _SRC= $(shell find {dir}{} -name \"*.{ext}\")
@@ -141,7 +145,6 @@ clear:
                     Some(str) => str,
                     None => self.default_ext
                 };
-                println!("{ext}");
                 
                 if !exts.contains(ext) {
                     exts.insert(ext.to_owned());
@@ -166,13 +169,58 @@ $(OBJ_DIR)/%.o: {}/%.{}
             }
         }
 
+        for target in &self.alt_targets {
+            target.write(&mut file)?;
+        }
+
         Ok(())
     }
+}
 
-    pub fn write(&self, filename: &str){
-        match self.write_(filename) {
-            Err(msg) => println!("Couldn't write Makefile at path {filename} : {msg}"),
-            _ => println!("Successfully wrote config to {filename}")
+fn write_target_name(file: &mut File, name: &str) -> Result<(), std::io::Error>{
+    file.write(name.as_bytes())?;
+    file.write(b": ")?;
+    Ok(())
+}
+
+fn write_target_var(file: &mut File, varname: &[u8], val: Option<&str>, target_name: &str) -> Result<(), io::Error> {
+    if let Some(val) = val {
+        write_target_name(file, target_name)?;
+        write_var(file, varname, val)?;
+    };
+    Ok(())
+}
+
+impl<'a> Target<'a> {
+    pub fn write(&self, file: &mut File) -> Result<(), std::io::Error>{
+        nl(file)?;
+        let mut dependency = "all";
+        if let Some(exec_name) = self.config.exec_name {
+            write!(file,"
+{}: $(OBJS)
+\t$(CC) $^ -o $@ $(LDFLAGS) $(LIBS)
+            ", exec_name)?;
+            dependency = exec_name;
         }
+
+        write_target_var(file, b"CC", self.config.compiler, self.name)?;
+        write_target_var(file, b"CFLAGS", self.config.cflags, self.name)?;
+        write_target_var(file, b"LDFLAGS", self.config.ldflags, self.name)?;
+
+        if let Some(libs) = &self.config.libs {
+            write_target_name(file, self.name)?;
+            file.write(b"LIBS=")?;
+            for lib in libs {
+                file.write(b"-l")?;
+                file.write(lib.as_bytes())?;
+                file.write(b" ")?;
+            }
+        }
+
+        write!(file, "
+{}: {dependency}
+        ", self.name)?;
+
+        Ok(())
     }
 }

@@ -24,15 +24,25 @@ pub struct Config <'a> {
     obj_dir: &'a str,
 
     default_config: BuildConfig<'a>,
-    alt_targets: Vec<BuildConfig<'a>>
+    alt_targets: Vec<Target<'a>>
 }
 
-#[derive(Default)]
+#[derive(Debug)]
 pub struct Target<'a> {
+    name: &'a str,
     config: BuildConfig<'a>
 }
 
-#[derive(Default)]
+impl <'a> Target<'a> {
+    pub fn new(name: &'a str) -> Self {
+        Self {
+            name,
+            config: BuildConfig::default()
+        }
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct BuildConfig<'a> {
     exec_name: Option<&'a str>,
     compiler: Option<&'a str>,
@@ -48,7 +58,6 @@ pub struct DefaultConfig {
     ldflags: &'static str,
     libs: Vec<&'static str>
 }
-
 
 impl<'a> Config <'a>{
     pub fn new() -> Config <'a> {

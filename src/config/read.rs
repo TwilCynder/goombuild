@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use yaml_rust2::yaml::{Hash, Yaml};
+use yaml_rust2::yaml::{Array, Hash, Yaml};
 
-use super::{BuildConfig, Config, SourceDir};
+use super::{BuildConfig, Config, SourceDir, Target};
 
 #[derive(Debug)]
 pub enum ContentError {
@@ -101,6 +101,14 @@ fn _extract_hash<'a>(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContentError> {
 }
 fn _get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as(_extract_hash, data, key)}
 
+fn extract_array<'a>(yaml: &'a Yaml) -> Result<Option<&'a Array>, ContentError> {
+    match yaml {
+        Yaml::Array(array) => Ok(Some(array)),
+        val => Err(handle_wrong_type(&val, "array"))
+    }
+}
+fn get_array<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Array>{get_as(extract_array, data, key)}
+
 fn array_or_string_into_vec<'a>(yaml: &'a Yaml) -> Result<Vec<&'a str>, ContentError> {
     let mut vec = Vec::<&'a str>::new();
     match yaml {
@@ -117,6 +125,13 @@ fn array_or_string_into_vec<'a>(yaml: &'a Yaml) -> Result<Vec<&'a str>, ContentE
         val => return Err(handle_wrong_type(val, "string or array thereof"))
     };
     Ok(vec)
+}
+
+fn get_dir_name<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a str> {
+    match get_str(data, key)?{
+        Some(str) => if str.is_empty() {Ok(Some("."))} else {Ok(Some(str))},
+        None => Ok(None),
+    }
 }
 
 impl <'a> SourceDir <'a> {
@@ -151,11 +166,26 @@ impl <'a> BuildConfig<'a> {
     pub fn read(&mut self, data: &'a Hash) -> Result<(), ContentError>{
         self.exec_name = get_str(data, "exec")?;
         self.libs = try_map_option(get_data(data, "libs"), array_or_string_into_vec)?;
-        self.ldflags = get_str(data, "link_options")?;
-        self.cflags = get_str(data, "compile_options")?;
+        self.ldflags = get_str(data, "link_options")?.or(get_str(data, "ldflags")?);
+        self.cflags = get_str(data, "compile_options")?.or(get_str(data, "cflags")?);
         self.compiler = get_str(data, "compiler")?;
 
         Ok(())
+    }
+}
+
+impl <'a> Target<'a> {
+    pub fn read(data: &'a Hash) -> Result<Target, ContentError> {
+        let name = match get_str(data, "name")? {
+            Some(str) => str,
+            None => return Err(ContentError::Other("Target needs a name"))
+        };
+
+        let mut target = Target::new(name);
+
+        target.config.read(data)?;
+
+        Ok(target)
     }
 }
 
@@ -195,7 +225,7 @@ impl <'a> Config<'a> {
                     if let Some(str) = get_str(data, "src_ext")?{config.default_ext = str};
                 } else {
                     let Some(source) = config.source.get_mut(0) else {unreachable!("The source vector should never be empty (index 0 should always be valid)")};
-                    if let Some(str) = get_str(data, "src_dir")? {source.dir = str};
+                    if let Some(str) = get_dir_name(data, "src_dir")? {source.dir = str};
                     if let Some(n) = get_int(data, "src_depth")? {source.depth = Some(n)};
                     if let Some(str) = get_str(data, "src_ext")?{source.ext = Some(str)};
                 }
@@ -208,9 +238,19 @@ impl <'a> Config<'a> {
                     }
                 }
                 if let Some(b) = get_bool(data, "keep_source_dir_names")? {config.keep_source_dir_names = b};
-                if let Some(str) = get_str(data, "obj_dir")? {config.obj_dir = str};
+                if let Some(str) = get_dir_name(data, "obj_dir")? {config.obj_dir = str};
 
                 config.default_config.read(data)?;
+                if let Some(array) = get_array(data, "targets")? {
+                    for data in array {
+                        match data {
+                            Yaml::Hash(hash) => {
+                                config.alt_targets.push(Target::read(hash)?);
+                            },
+                            val => return Err(handle_wrong_type(val, "table"))
+                        }
+                    }
+                }
 
                 return Ok(config);
             },

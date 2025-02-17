@@ -239,6 +239,7 @@ impl <'a> Config<'a> {
                 }
                 if let Some(b) = get_bool(data, "keep_source_dir_names")? {config.keep_source_dir_names = b};
                 if let Some(str) = get_dir_name(data, "obj_dir")? {config.obj_dir = str};
+                if let Some(str) = get_dir_name(data, "bin_dir")? {config.bin_dir = str};
 
                 config.default_config.read(data)?;
                 if let Some(array) = get_array(data, "targets")? {

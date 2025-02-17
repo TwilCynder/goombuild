@@ -68,6 +68,8 @@ impl Config <'_>{
         //write_var(&mut file, b"INCLUDE_DIR", self.include_dir)?;
         //write_var(&mut file, b"SRC_DIR", self.src_dir)?;
         write_var(&mut file, b"OBJ_DIR", self.obj_dir)?;
+        write_var(&mut file, b"BIN_DIR", self.obj_dir)?;
+
         //write_var(&mut file, b"SRC_EXT", self.src_ext)?;
         write_var(&mut file, b"CFLAGS", or_default!(self.default_config, cflags))?;
         write_var(&mut file, b"LDFLAGS", or_default!(self.default_config, ldflags))?;
@@ -129,11 +131,11 @@ all: start $(EXEC)
 start:
 	mkdir -p $(OBJ_DIR)
 
-$(EXEC): $(OBJS)
+$(BIN_DIR)/$(EXEC): $(OBJS)
 \t$(CC) $^ -o $@ $(LDFLAGS) $(LIBS)
 
 clear: 
-\t-@rm -f $(EXEC) 2> /dev/null
+\t-@rm -f $(BIN_DIR)/$(EXEC) 2> /dev/null
 \t-@rm -fr $(OBJ_DIR)/* 2> /dev/null
 
         ")?;
@@ -197,7 +199,7 @@ impl<'a> Target<'a> {
         let mut dependency = "all";
         if let Some(exec_name) = self.config.exec_name {
             write!(file,"
-{}: $(OBJS)
+$(BIN_DIR)/{}: $(OBJS)
 \t$(CC) $^ -o $@ $(LDFLAGS) $(LIBS)
             ", exec_name)?;
             dependency = exec_name;

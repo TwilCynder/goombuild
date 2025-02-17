@@ -22,6 +22,7 @@ pub struct Config <'a> {
     default_ext: &'a str,
     include_dir: Vec<&'a str>,
     obj_dir: &'a str,
+    bin_dir: &'a str,
 
     default_config: BuildConfig<'a>,
     alt_targets: Vec<Target<'a>>
@@ -67,7 +68,7 @@ impl<'a> Config <'a>{
             default_ext: "cpp",
             include_dir: Vec::new(),
             obj_dir: "obj",
-
+            bin_dir: ".",
 
             default_config: BuildConfig::default(),
             alt_targets: Vec::new()

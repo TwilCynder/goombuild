@@ -25,7 +25,9 @@ pub struct Config <'a> {
     bin_dir: &'a str,
 
     default_config: BuildConfig<'a>,
-    alt_targets: Vec<Target<'a>>
+    alt_targets: Vec<Target<'a>>,
+
+    pub output_file: Option<&'a str>
 }
 
 #[derive(Debug)]
@@ -71,7 +73,9 @@ impl<'a> Config <'a>{
             bin_dir: ".",
 
             default_config: BuildConfig::default(),
-            alt_targets: Vec::new()
+            alt_targets: Vec::new(),
+
+            output_file: None
         }    
     }
 }

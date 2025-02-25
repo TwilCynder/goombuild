@@ -1,12 +1,13 @@
-use std::{array, fmt::Display, fs, process::exit};
+use std::{fmt::Display, fs, process::exit};
 
 use config::Config;
 use gumdrop::Options;
-use read_yaml::{get_hash, read_yaml_file};
+use read_yaml::{get_doc, read_yaml_file};
 
 mod config;
 mod read_yaml;
 mod options;
+mod override_yaml;
 
 fn handle_read_error(err: &dyn Display) -> ! {
     println!("Can't read config file : {err}");
@@ -59,11 +60,11 @@ fn main() {
     let filename = find_input_file(&options.input_file);
 
     let docs = read_yaml_file(&filename).unwrap_or_else(|err| handle_read_error(&err));
-    let data = get_hash(&docs).unwrap_or_else(|err| handle_read_error(&err));
+    let data = get_doc(&docs).unwrap_or_else(|err| handle_read_error(&err));
 
     let config = Config::read(data).unwrap_or_else(|err| {
         println!("Incorrect config content : {err}");
         exit(2)
     });
-    config.write(&options.out_file);
+    config.write(options.out_file.as_ref().map_or(config.output_file.unwrap_or("./Makefile"), String::as_str));
 }

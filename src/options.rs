@@ -2,8 +2,7 @@
 pub struct Options {
     pub help: bool,
 
-    #[options(default="./Makefile")]
-    pub out_file: String,
+    pub out_file: Option<String>,
 
     pub input_file: Option<String>
 }

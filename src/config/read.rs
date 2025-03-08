@@ -1,4 +1,4 @@
-use crate::read_yaml::{array_or_string_into_vec, get_array, get_bool, get_data, get_int, get_str, handle_wrong_type, try_map_option, ContentError, ContextfulError, YamlResult};
+use crate::read_yaml::{array_or_string_into_vec, get_array, get_bool, get_data, get_int, get_str, handle_wrong_type, try_map_option, ContentError, ContextfulError, ContextfulMaybe, YamlResult};
 
 use super::{BuildConfig, Config, SourceDir, Target};
 use yaml_rust2::{yaml::Hash, Yaml};
@@ -40,13 +40,6 @@ impl <'a> SourceDir <'a> {
     }
 }
 
-fn ctx<T, C: ToString>(res: Result<T, ContextfulError>, context_l: impl Fn() -> C) -> Result<T, ContextfulError>{
-    match res {
-        Ok(v) => Ok(v),
-        Err(err) => Err(err.add_context(context_l())),
-    }
-}
-
 impl <'a> BuildConfig<'a> {
     fn read(&mut self, data: &'a Hash) -> Result<(), ContextfulError>{
         self.exec_name = get_str(data, "exec")?;
@@ -68,7 +61,7 @@ impl <'a> Target<'a> {
 
         let mut target = Target::new(name);
 
-        ctx(target.config.read(data), || "in target ".to_owned() + name)?;
+        target.config.read(data).add_context(|| "in target ".to_owned() + name)?;
 
         Ok(target)
     }
@@ -126,7 +119,7 @@ impl <'a> Config<'a> {
                 if let Some(str) = get_dir_name(data, "obj_dir")? {config.obj_dir = str};
                 if let Some(str) = get_dir_name(data, "bin_dir")? {config.bin_dir = str};
 
-                ctx(config.default_config.read(data), || "In default config")?;
+                config.default_config.read(data).add_context(|| "In default config")?;
                 if let Some(array) = get_array(data, "targets")? {
                     for data in array {
                         match data {

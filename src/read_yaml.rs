@@ -73,7 +73,8 @@ pub fn get_doc(docs: &Vec<Yaml>) -> Result<&Yaml, &str> {
 
 pub enum ContextfulErrorType {
     WrongType(&'static str, &'static str),
-    Other(&'static str)
+    Message(&'static str),
+    Other(String)
 }
 
 pub struct ContextfulError {
@@ -96,9 +97,32 @@ impl ContextfulError {
     }
 }
 
+pub trait ContextfulMaybe {
+    fn add_context<C: ToString, F: Fn() -> C>(self, context: F) -> Self;
+}
+
 impl From<&'static str> for ContextfulError {
     fn from(error: &'static str) -> Self {
-        ContextfulError { err: ContextfulErrorType::Other (error), context: String::new() }
+        ContextfulError { err: ContextfulErrorType::Message (error), context: String::new() }
+    }
+}
+
+impl From<String> for ContextfulError {
+    fn from(error: String) -> Self {
+        ContextfulError {err: ContextfulErrorType::Other(error), context: String::new()}
+    }
+}
+
+type ContextfulResult<T> = Result<T, ContextfulError>;
+
+impl<T> ContextfulMaybe for ContextfulResult<T>{
+    fn add_context<C: ToString, F: Fn() -> C>(self, context: F) -> Self {
+        match self {
+            Ok(_) => self,
+            Err(err) => {
+                Err(err.add_context(context()))
+            },
+        }
     }
 }
 
@@ -126,7 +150,8 @@ impl Display for ContextfulError {
             ContextfulErrorType::WrongType(expected, got) => {
                 write!(f, "should be a {expected} (got {got})")
             },
-            ContextfulErrorType::Other(mdsg) => f.write_str(&mdsg),
+            ContextfulErrorType::Message(mdsg) => f.write_str(&mdsg),
+            ContextfulErrorType::Other(msg) => f.write_str(&msg)
         }
     }
 }
@@ -142,7 +167,7 @@ impl Display for ContentError {
     }
 }
 
-fn yaml_type_name(yaml_value: &Yaml) -> &'static str {
+pub fn yaml_type_name(yaml_value: &Yaml) -> &'static str {
     match yaml_value {
         Yaml::Real(_) => "real number",
         Yaml::Integer(_) => "integer",
@@ -170,8 +195,12 @@ pub fn handle_wrong_type(yaml_value: &Yaml, expected: &'static str) -> Contextfu
     }
 }
 
-pub fn get_data<'a>(data: &'a Hash, key: &'static str) -> Option<&'a Yaml> {
+pub fn get_data<'a>(data: &'a Hash, key: & str) -> Option<&'a Yaml> {
     data.get(&Yaml::from_str(key))
+}
+
+pub fn _get_data_mut<'a>(data: &'a mut Hash, key: &str) -> Option<&'a mut Yaml> {
+    data.get_mut(&Yaml::from_str(key))
 }
 
 pub type YamlResult<T> = Result<Option<T>, ContextfulError>;
@@ -221,7 +250,7 @@ fn _extract_hash<'a>(yaml: &'a Yaml) -> Result<Option<&'a Hash>, ContextfulError
         val => Err(handle_wrong_type(val, "table"))
     }
 }
-fn _get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as(_extract_hash, data, key)}
+pub fn _get_hash<'a>(data: &'a Hash, key: &'static str) -> YamlResult<&'a Hash>{get_as(_extract_hash, data, key)}
 
 fn extract_array<'a>(yaml: &'a Yaml) -> Result<Option<&'a Array>, ContextfulError> {
     match yaml {

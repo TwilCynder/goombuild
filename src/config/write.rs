@@ -68,7 +68,7 @@ impl Config <'_>{
         //write_var(&mut file, b"INCLUDE_DIR", self.include_dir)?;
         //write_var(&mut file, b"SRC_DIR", self.src_dir)?;
         write_var(&mut file, b"OBJ_DIR", self.obj_dir)?;
-        write_var(&mut file, b"BIN_DIR", self.obj_dir)?;
+        write_var(&mut file, b"BIN_DIR", self.bin_dir)?;
 
         //write_var(&mut file, b"SRC_EXT", self.src_ext)?;
         write_var(&mut file, b"CFLAGS", or_default!(self.default_config, cflags))?;

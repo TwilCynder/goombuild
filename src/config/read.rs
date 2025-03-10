@@ -131,7 +131,7 @@ impl <'a> Config<'a> {
                     }
                 }
 
-                config.output_file = get_str(data, "output-file")?;
+                config.output_file = get_str(data, "output-file")?.or(get_str(data, "output_file")?);
 
                 return Ok(config);
             },

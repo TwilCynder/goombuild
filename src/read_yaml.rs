@@ -59,15 +59,15 @@ pub fn read_yaml_file(filename: &str) -> Result<Vec<Yaml>, ReadError> {
     Ok(docs)
 }
 
-pub fn get_doc(docs: &Vec<Yaml>) -> Result<&Yaml, &str> {
+pub fn get_doc(docs: &mut Vec<Yaml>) -> Result<&mut Yaml, &str> {
+
     if docs.len() > 1{
         return Err("Config file somehow contains multiple YAML documents");
     }
-    if docs.len() < 1{
-        return Err("Empty config");
+    match docs.get_mut(0) {
+        Some(v) => Ok(v),
+        None => Err("Empty config"),
     }
-
-    Ok(&docs[0])
 }
 
 
@@ -199,7 +199,7 @@ pub fn get_data<'a>(data: &'a Hash, key: & str) -> Option<&'a Yaml> {
     data.get(&Yaml::from_str(key))
 }
 
-pub fn _get_data_mut<'a>(data: &'a mut Hash, key: &str) -> Option<&'a mut Yaml> {
+pub fn get_data_mut<'a>(data: &'a mut Hash, key: &str) -> Option<&'a mut Yaml> {
     data.get_mut(&Yaml::from_str(key))
 }
 

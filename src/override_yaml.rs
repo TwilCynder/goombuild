@@ -1,4 +1,6 @@
 
+use std::fmt::Debug;
+
 use yaml_rust2::Yaml;
 
 use crate::read_yaml::{get_data_mut, yaml_type_name, ContextfulError, ContextfulMaybe};
@@ -19,13 +21,21 @@ impl Overrides {
             match split {
                 None => return Err(ContextfulError::from("Config override syntax is `path=value`").add_context(format!("In "))),
                 Some((path, value)) => {
-                    override_property(data, path, value).add_context(||format!("In property override {ov}"));
+                    override_property(data, path, value).add_context(||format!("In property override {ov}"))?;
                 }
             }
         };
         Ok(())
     }
 }
+
+impl Debug for Overrides {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Overrides").field("overrides", &self.overrides).finish()
+    }
+}
+
+
 
 fn create_value(value: &str) -> Yaml {
     yaml_rust2::Yaml::from_str(value)
@@ -68,14 +78,15 @@ fn construct_from_path(path_fields: &[&str], value: &str) -> Result<Yaml, Contex
         match name.chars().nth(0) {
             None => return Err(ContextfulError::from("Empty name in the property path")),
             Some('+') => {
-                let mut new_value = Yaml::from_str("[]");
+                let mut new_value = Yaml::Array(Vec::new());
                 let Yaml::Array(arr) = &mut new_value else {unreachable!("Yaml::from_str with empty litteral [] returned wrong type")};
                 arr.push(value);
                 value = new_value;
             },
             Some(c) if c.is_digit(10) => return Err(ContextfulError::from(format!("Cannot index element {name} in empty array"))),
             Some(_) => {
-                let mut new_value = Yaml::from_str("{}");
+                let mut new_value = Yaml::Hash(yaml_rust2::yaml::Hash::new());
+                println!("{new_value:?}");
                 let Yaml::Hash(hash) = &mut new_value else {unreachable!()};
                 hash.insert(Yaml::from_str(name), value);
                 value = new_value;
@@ -97,7 +108,7 @@ fn traverse_path(data: &mut Yaml, path: &[&str], value: &str) -> Result<(), Cont
                         arr.push(construct_from_path(&path[1..], value)?);
                         return Ok(())
                     },
-                    _ => return Err(ContextfulError::from(format!("Trying to append element to non-list value (is a {}", yaml_type_name(&data))))
+                    _ => return Err(ContextfulError::from(format!("Trying to append element to non-list value (is a {})", yaml_type_name(&data))))
                 }
             },
             Some(c) if c.is_digit(10) => {

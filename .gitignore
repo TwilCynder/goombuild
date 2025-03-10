@@ -2,3 +2,4 @@
 /test
 Makefile
 gbuild.yaml
+test*.mk

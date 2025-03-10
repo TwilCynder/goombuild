@@ -14,6 +14,11 @@ fn handle_read_error(err: &dyn Display) -> ! {
     exit(1);
 }
 
+fn handle_generic_error(err: &dyn Display) -> ! {
+    println!("Error : {err}");
+    exit(1);
+}
+
 const INPUT_FILENAMES : [&str ; 4] = [
     "./gbuild.yaml",
     "./gbuild.yml",
@@ -56,11 +61,14 @@ fn find_input_file(input_filename: &Option<String>) -> &str{
 
 fn main() {
     let options = options::Options::parse_args_default_or_exit();
+    println!("{options:?}");
 
     let filename = find_input_file(&options.input_file);
 
-    let docs = read_yaml_file(&filename).unwrap_or_else(|err| handle_read_error(&err));
-    let data = get_doc(&docs).unwrap_or_else(|err| handle_read_error(&err));
+    let mut docs = read_yaml_file(&filename).unwrap_or_else(|err| handle_read_error(&err));
+    let data = get_doc(&mut docs).unwrap_or_else(|err| handle_read_error(&err));
+    options.config_overrides.apply(data).unwrap_or_else(|err| handle_generic_error(&err));
+    println!("{data:?}");
 
     let config = Config::read(data).unwrap_or_else(|err| {
         println!("Incorrect config content : {err}");

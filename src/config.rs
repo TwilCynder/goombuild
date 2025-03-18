@@ -2,7 +2,8 @@ struct SourceDir<'a> {
     dir: &'a str,
     ext: Option<&'a str>,
     depth: Option<i64>,
-    included: bool
+    included: bool,
+    exclude: Vec<&'a str>
 }
 
 impl <'a> SourceDir<'a> {
@@ -11,7 +12,8 @@ impl <'a> SourceDir<'a> {
             dir: "src",
             ext: None,
             depth: None,
-            included: false
+            included: false,
+            exclude: Vec::new()
         }
     }
 }
@@ -20,6 +22,7 @@ pub struct Config <'a> {
     keep_source_dir_names: bool,
     source: Vec<SourceDir<'a>>,
     default_ext: &'a str,
+    exclude_dir: Vec<&'a str>,
     include_dir: Vec<&'a str>,
     obj_dir: &'a str,
     bin_dir: &'a str,
@@ -29,7 +32,7 @@ pub struct Config <'a> {
 
     pub output_file: Option<&'a str>
 }
-
+     
 #[derive(Debug)]
 pub struct Target<'a> {
     name: &'a str,
@@ -68,6 +71,7 @@ impl<'a> Config <'a>{
             source: Vec::from([SourceDir::new()]),
             keep_source_dir_names: false,
             default_ext: "cpp",
+            exclude_dir: Vec::new(),
             include_dir: Vec::new(),
             obj_dir: "obj",
             bin_dir: ".",

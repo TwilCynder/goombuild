@@ -102,12 +102,22 @@ impl Config <'_>{
             let dir = source.dir;
 
             write!(file, "
-_SRC= $(shell find {dir}{} -name \"*.{ext}\")
+_SRC= $(shell find {dir}{} -name \"*.{ext}\" {})
 _OBJS= $(_SRC:.{ext}=.o)
 OBJS := $(OBJS) $(patsubst {dir}/%,$(OBJ_DIR)/{}%,$(_OBJS))
                 ", 
                 string_if_option(source.depth, |depth: i64| string_if(depth > 0, || concat_str(" -maxdepth ", depth))),
-                string_if(self.keep_source_dir_names, || concat_str_post(dir, "/"))
+                {
+                    let mut str = String::new();
+                    for path in &source.exclude {
+                        str += format!("-not -path \"*{}*\" ", path).as_str();
+                    }
+                    for path in &self.exclude_dir {
+                        str += format!("-not -path \"*{}*\" ", path).as_str();
+                    }
+                    str
+                },
+                string_if(self.keep_source_dir_names, || concat_str_post(dir, "/")),
             )?;
 
         }

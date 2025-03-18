@@ -25,6 +25,8 @@ impl <'a> SourceDir <'a> {
         }
         self.ext = get_str(&hash, "ext")?;
         self.depth = get_int(&hash, "depth")?;
+
+        if let Some(yaml) = get_data(hash, "exclude") {self.exclude = array_or_string_into_vec(yaml)?}        
         if let Some(b) = get_bool(&hash, "included")? {self.included = b};
         Ok(())
     }
@@ -72,9 +74,9 @@ impl <'a> Config<'a> {
         let mut config = Config::new();
 
         match &data {
-            Yaml::Hash(data) => {
+            Yaml::Hash(hash) => {
 
-                if let Some(str) = get_str(data, "kind")? {
+                if let Some(str) = get_str(hash, "kind")? {
                     match str {
                         "cpp" => {
                             config.default_config.compiler = Some("g++");
@@ -88,7 +90,7 @@ impl <'a> Config<'a> {
                     }
                 } 
 
-                if let Some(yaml) = get_data(data, "sources") {
+                if let Some(yaml) = get_data(hash, "sources") {
                     config.source.clear();
                     match yaml {
                         Yaml::Array(arr) => {
@@ -100,14 +102,19 @@ impl <'a> Config<'a> {
                             config.source.push(SourceDir::read_from_hash_or_string(val)?)
                         }
                     }
-                    if let Some(str) = get_str(data, "src_ext")?{config.default_ext = str};
+                    if let Some(str) = get_str(hash, "src_ext")?{config.default_ext = str};
+                    if let Some(yaml) = get_data(hash, "src_exclude"){config.exclude_dir = array_or_string_into_vec(yaml)?}
                 } else {
                     let Some(source) = config.source.get_mut(0) else {unreachable!("The source vector should never be empty (index 0 should always be valid)")};
-                    if let Some(str) = get_dir_name(data, "src_dir")? {source.dir = str};
-                    if let Some(n) = get_int(data, "src_depth")? {source.depth = Some(n)};
-                    if let Some(str) = get_str(data, "src_ext")?{source.ext = Some(str)};
+                    if let Some(str) = get_dir_name(hash, "src_dir")? {source.dir = str};
+                    if let Some(yaml) = get_data(hash, "src_exclude"){
+                        source.exclude = array_or_string_into_vec(yaml)?
+                    }
+                    source.depth = get_int(hash, "src_depth")?;
+                    source.ext = get_str(hash, "src_ext")?;
+
                 }
-                if let Some(yaml) = get_data(data, "include") {
+                if let Some(yaml) = get_data(hash, "include") {
                     config.include_dir = array_or_string_into_vec(yaml)?;
                 }
                 for source in &config.source {
@@ -115,12 +122,12 @@ impl <'a> Config<'a> {
                         config.include_dir.push(source.dir);
                     }
                 }
-                if let Some(b) = get_bool(data, "keep_source_dir_names")? {config.keep_source_dir_names = b};
-                if let Some(str) = get_dir_name(data, "obj_dir")? {config.obj_dir = str};
-                if let Some(str) = get_dir_name(data, "bin_dir")? {config.bin_dir = str};
+                if let Some(b) = get_bool(hash, "keep_source_dir_names")? {config.keep_source_dir_names = b};
+                if let Some(str) = get_dir_name(hash, "obj_dir")? {config.obj_dir = str};
+                if let Some(str) = get_dir_name(hash, "bin_dir")? {config.bin_dir = str};
 
-                config.default_config.read(data).add_context(|| "In default config")?;
-                if let Some(array) = get_array(data, "targets")? {
+                config.default_config.read(hash).add_context(|| "In default config")?;
+                if let Some(array) = get_array(hash, "targets")? {
                     for data in array {
                         match data {
                             Yaml::Hash(hash) => {
@@ -131,7 +138,7 @@ impl <'a> Config<'a> {
                     }
                 }
 
-                config.output_file = get_str(data, "output-file")?.or(get_str(data, "output_file")?);
+                config.output_file = get_str(hash, "output-file")?.or(get_str(hash, "output_file")?);
 
                 return Ok(config);
             },

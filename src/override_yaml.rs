@@ -86,7 +86,7 @@ fn construct_from_path(path_fields: &[&str], value: &str) -> Result<Yaml, Contex
             Some(c) if c.is_digit(10) => return Err(ContextfulError::from(format!("Cannot index element {name} in empty array"))),
             Some(_) => {
                 let mut new_value = Yaml::Hash(yaml_rust2::yaml::Hash::new());
-                println!("{new_value:?}");
+                //println!("{new_value:?}");
                 let Yaml::Hash(hash) = &mut new_value else {unreachable!()};
                 hash.insert(Yaml::from_str(name), value);
                 value = new_value;

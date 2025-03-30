@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs::File, io::{self, Write}};
+use std::{collections::HashSet, fmt::format, fs::File, io::{self, Write}};
 
 use super::{init_default, Config, Target};
 
@@ -144,11 +144,7 @@ start:
 $(BIN_DIR)/$(EXEC): $(OBJS)
 \t$(CC) $^ -o $@ $(LDFLAGS) $(LIBS)
 
-clear: 
-\t-@rm -f $(BIN_DIR)/$(EXEC) 2> /dev/null
-\t-@rm -fr $(OBJ_DIR)/* 2> /dev/null
-
-        ")?;
+")?;
 
         if self.keep_source_dir_names {
             let mut exts = HashSet::<String>::new();
@@ -185,6 +181,12 @@ $(OBJ_DIR)/%.o: {}/%.{}
             target.write(&mut file)?;
         }
 
+        file.write(b"
+clear: 
+\t-@rm -f $(BIN_DIR)/$(EXEC) 2> /dev/null
+\t-@find . -name '*.o' -exec rm {} \\; 2> /dev/null
+        ")?;
+
         Ok(())
     }
 }
@@ -211,7 +213,7 @@ impl<'a> Target<'a> {
             write!(file,"
 $(BIN_DIR)/{}: $(OBJS)
 \t$(CC) $^ -o $@ $(LDFLAGS) $(LIBS)
-            ", exec_name)?;
+            \n", exec_name)?;
             dependency = exec_name;
         }
 
@@ -228,6 +230,7 @@ $(BIN_DIR)/{}: $(OBJS)
                 file.write(b" ")?;
             }
         }
+        nl(file)?;
 
         write!(file, "
 {}: {dependency}

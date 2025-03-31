@@ -65,6 +65,20 @@ pub struct DefaultConfig {
     libs: Vec<&'static str>
 }
 
+enum CompileMsgType <'a> {
+    Command,
+    None,
+    Summary,
+    Custom(&'a str) //string should contain "{file}"
+}
+
+pub struct DisplayConfig<'a> {
+    compile_msg: CompileMsgType<'a>,
+    start_msg: bool,
+    link_msg: bool,
+    end_msg: bool
+}
+
 impl<'a> Config <'a>{
     pub fn new() -> Config <'a> {
         Config { 

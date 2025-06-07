@@ -1,4 +1,5 @@
-use std::{collections::HashSet, fmt::format, fs::File, io::{self, Write}};
+use core::str;
+use std::{collections::HashSet, fs::File, io::{self, Write}};
 
 use super::{init_default, Config, Target};
 
@@ -15,7 +16,7 @@ fn writeln(file: &mut File, str: &str) -> Result<(), io::Error>{
 
 fn write_var(file: &mut File, varname: &[u8], val: &str) -> Result<(), io::Error> {
     file.write(varname)?;
-    file.write(b"=")?;
+    file.write(b":=")?;
     writeln(file, val)?;
     Ok(())
 }
@@ -197,11 +198,30 @@ fn write_target_name(file: &mut File, name: &str) -> Result<(), std::io::Error>{
     Ok(())
 }
 
+fn write_target_var_(file: &mut File, varname: &[u8], val: &str, target_name: &str) -> Result<(), io::Error> {
+    write_target_name(file, target_name)?;
+    write_var(file, varname, val)?;
+
+    Ok(())
+}
+
 fn write_target_var(file: &mut File, varname: &[u8], val: Option<&str>, target_name: &str) -> Result<(), io::Error> {
     if let Some(val) = val {
-        write_target_name(file, target_name)?;
-        write_var(file, varname, val)?;
+        write_target_var_(file, varname, val, target_name)?
     };
+    Ok(())
+}
+
+fn write_target_var_with_expansion(file: &mut File, varname: &[u8], val: Option<&str>, target_name: &str) -> Result<(), io::Error> {
+    if let Some(val) = val {
+        let val = if val.contains("+") {
+            val.replace("+", (String::from("$(") + unsafe {str::from_utf8_unchecked(varname)} + ")").as_str())
+        } else {
+            val.to_owned()
+        };
+        write_target_var_(file, varname, val.as_str(), target_name)?;
+    };
+
     Ok(())
 }
 
@@ -218,8 +238,8 @@ $(BIN_DIR)/{}: $(OBJS)
         }
 
         write_target_var(file, b"CC", self.config.compiler, self.name)?;
-        write_target_var(file, b"CFLAGS", self.config.cflags, self.name)?;
-        write_target_var(file, b"LDFLAGS", self.config.ldflags, self.name)?;
+        write_target_var_with_expansion(file, b"CFLAGS", self.config.cflags, self.name)?;
+        write_target_var_with_expansion(file, b"LDFLAGS", self.config.ldflags, self.name)?;
 
         if let Some(libs) = &self.config.libs {
             write_target_name(file, self.name)?;
@@ -229,8 +249,8 @@ $(BIN_DIR)/{}: $(OBJS)
                 file.write(lib.as_bytes())?;
                 file.write(b" ")?;
             }
+            nl(file)?;
         }
-        nl(file)?;
 
         write!(file, "
 {}: {dependency}

@@ -46,8 +46,8 @@ impl <'a> BuildConfig<'a> {
     fn read(&mut self, data: &'a Hash) -> Result<(), ContextfulError>{
         self.exec_name = get_str(data, "exec")?;
         self.libs = try_map_option(get_data(data, "libs"), array_or_string_into_vec)?;
-        self.ldflags = get_str(data, "link_options")?.or(get_str(data, "ldflags")?);
-        self.cflags = get_str(data, "compile_options")?.or(get_str(data, "cflags")?);
+        self.ldflags = get_str(data, "link_flags")?.or(get_str(data, "ldflags")?);
+        self.cflags = get_str(data, "compile_flags")?.or(get_str(data, "cflags")?);
         self.compiler = get_str(data, "compiler")?;
 
         Ok(())
@@ -55,7 +55,7 @@ impl <'a> BuildConfig<'a> {
 }
 
 impl <'a> Target<'a> {
-    pub fn read(data: &'a Hash) -> Result<Target, ContentError> {
+    pub fn read(data: &'a Hash) -> Result<Target<'a>, ContentError> {
         let name = match get_str(data, "name")? {
             Some(str) => str,
             None => return Err(ContentError::Other("Targets need a name"))

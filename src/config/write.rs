@@ -243,10 +243,14 @@ $(BIN_DIR)/{}: $(OBJS)
 
         if let Some(libs) = &self.config.libs {
             write_target_name(file, self.name)?;
-            file.write(b"LIBS=")?;
+            file.write(b"LIBS:=")?;
+
             for lib in libs {
                 file.write(b"-l")?;
-                file.write(lib.as_bytes())?;
+                match lib {
+                    &"+" => {file.write(b"$(LIBS)")},
+                    _ => {file.write(lib.as_bytes())}
+                }?;
                 file.write(b" ")?;
             }
             nl(file)?;
